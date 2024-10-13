@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"image"
+	_ "image/gif"
 	"image/jpeg"
 	"image/png"
 	"os"
