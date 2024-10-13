@@ -27,7 +27,8 @@ func main() {
 	fmt.Println("Printing energy calculated for each pixel.")
 	for row := 0; row < sc.Height(); row++ {
 		for col := 0; col < sc.Width(); col++ {
-			fmt.Printf("%9.0f ", sc.Energy(col, row))
+			fmt.Printf("%9.2f ", sc.Energy(col, row))
+			// fmt.Printf("%2.0v ", sc.Color(col, row))
 		}
 		fmt.Println()
 	}
