@@ -21,29 +21,9 @@ func New(img image.Image) *SeamCarver {
 		pixels:   imageToArrayPixel(img),
 	}
 
-	sc.RecalculateEnergy()
+	sc.recalculateEnergy()
 
 	return sc
-}
-
-func (sc *SeamCarver) RecalculateEnergy() {
-	h := len(sc.pixels)
-	w := len(sc.pixels[0])
-
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			// border
-			if y == 0 || y == h-1 || x == 0 || x == w-1 {
-				sc.pixels[y][x].E = 1000
-				continue
-			}
-
-			deltaX := calcDeltaSquare(sc.pixels[y][x+1].C, sc.pixels[y][x-1].C)
-			deltaY := calcDeltaSquare(sc.pixels[y+1][x].C, sc.pixels[y-1][x].C)
-
-			sc.pixels[y][x].E = math.Sqrt(float64(deltaX) + float64(deltaY))
-		}
-	}
 }
 
 // Picture represent the picture(current)
@@ -85,14 +65,63 @@ func (sc *SeamCarver) FindVerticalSeam() []int {
 
 // RemoveHorizontalSeam from current picture
 func (sc *SeamCarver) RemoveHorizontalSeam(seam []int) {
-	panic("unimplement")
+	newpixels := transpose(sc.pixels)
+	newpixels = removeVerticalSeam(newpixels, seam)
+	sc.pixels = transpose(newpixels)
+	sc.recalculateEnergy()
 }
 
 // RemoveVerticalSeam from current picture
 func (sc *SeamCarver) RemoveVerticalSeam(seam []int) {
-	panic("unimplement")
+	sc.pixels = removeVerticalSeam(sc.pixels, seam)
+	sc.recalculateEnergy()
 }
 
+func (sc *SeamCarver) recalculateEnergy() {
+	h := len(sc.pixels)
+	w := len(sc.pixels[0])
+
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			// border
+			if y == 0 || y == h-1 || x == 0 || x == w-1 {
+				sc.pixels[y][x].E = 1000
+				continue
+			}
+
+			deltaX := calcDeltaSquare(sc.pixels[y][x+1].C, sc.pixels[y][x-1].C)
+			deltaY := calcDeltaSquare(sc.pixels[y+1][x].C, sc.pixels[y-1][x].C)
+
+			sc.pixels[y][x].E = math.Sqrt(float64(deltaX) + float64(deltaY))
+		}
+	}
+}
+
+func removeVerticalSeam(input [][]*Pixel, seam []int) [][]*Pixel {
+	h := len(input)
+	if h == 0 {
+		return nil
+	}
+	w := len(input[0])
+	newpixels := make([][]*Pixel, h)
+	for i := range newpixels {
+		newpixels[i] = make([]*Pixel, w-1) // minus 1
+	}
+
+	for i := 0; i < h; i++ {
+		var c int
+		for j := 0; j < w; j++ {
+			if seam[i] != j {
+				newpixels[i][c] = input[i][j]
+				c++
+			}
+		}
+	}
+
+	return newpixels
+}
+
+// findShortestPath travel from top to bottom
 func findShortestPath(pixels [][]*Pixel) []int {
 	height, width := len(pixels), len(pixels[0])
 	// adj return the neighbors of the pixel at(x, y) to pixels (x − 1, y + 1), (x, y + 1), and (x + 1, y + 1),
@@ -155,6 +184,7 @@ func findShortestPath(pixels [][]*Pixel) []int {
 	return path
 }
 
+// transpose return new matrix after transpose
 func transpose(pixels [][]*Pixel) [][]*Pixel {
 	rows, cols := len(pixels), len(pixels[0])
 	newpixels := make([][]*Pixel, cols)
