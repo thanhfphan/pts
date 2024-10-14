@@ -27,15 +27,30 @@ func main() {
 	fmt.Println()
 
 	carver := seamcarver.New(picture)
+
 	verticalSeam := carver.FindVerticalSeam()
 	fmt.Println("Vertical seam:", verticalSeam)
-	// fmt.Println("Horizontal seam:", carver.FindHorizontalSeam())
-	fmt.Println()
 	fmt.Println("Printing energy calculated for each pixel.")
 	for row := 0; row < carver.Height(); row++ {
 		for col := 0; col < carver.Width(); col++ {
 			var c string
 			if verticalSeam[row] == col {
+				c = "*" // marked
+			}
+			fmt.Printf("%10.2f%s", carver.Energy(col, row), c)
+		}
+		fmt.Println()
+	}
+
+	fmt.Println()
+
+	horizontalSeam := carver.FindHorizontalSeam()
+	fmt.Println("Horizontal seam:", horizontalSeam)
+	fmt.Println("Printing energy calculated for each pixel.")
+	for row := 0; row < carver.Height(); row++ {
+		for col := 0; col < carver.Width(); col++ {
+			var c string
+			if horizontalSeam[col] == row {
 				c = "*" // marked
 			}
 			fmt.Printf("%10.2f%s", carver.Energy(col, row), c)

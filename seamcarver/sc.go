@@ -72,16 +72,15 @@ func (sc *SeamCarver) Color(x, y int) color.Color {
 
 // FindHorizontalSeam return sequence of indices for horizontal seam
 func (sc *SeamCarver) FindHorizontalSeam() []int {
-	// TODO: implement
-	// - rotate
+	// - transpose
+	tp := transpose(sc.pixels)
 	// - find vertical seam
-	// - rotate back
-	panic("unimplement")
+	return findShortestPath(tp)
 }
 
 // FindVerticalSeam return sequence of indices for vertical seam
 func (sc *SeamCarver) FindVerticalSeam() []int {
-	return sc.findShortestPath()
+	return findShortestPath(sc.pixels)
 }
 
 // RemoveHorizontalSeam from current picture
@@ -94,8 +93,8 @@ func (sc *SeamCarver) RemoveVerticalSeam(seam []int) {
 	panic("unimplement")
 }
 
-func (sc *SeamCarver) findShortestPath() []int {
-	height, width := sc.Height(), sc.Width()
+func findShortestPath(pixels [][]*Pixel) []int {
+	height, width := len(pixels), len(pixels[0])
 	// adj return the neighbors of the pixel at(x, y) to pixels (x − 1, y + 1), (x, y + 1), and (x + 1, y + 1),
 	adj := func(y, x int) [][]int {
 		r := [][]int{}
@@ -119,7 +118,7 @@ func (sc *SeamCarver) findShortestPath() []int {
 		k := encode(y, x)
 		for _, arr := range adj(y, x) {
 			visitkey := encode(arr[0], arr[1])
-			pixel := sc.pixels[arr[0]][arr[1]]
+			pixel := pixels[arr[0]][arr[1]]
 			val, has := distTo[visitkey]
 			if !has || val > distTo[k]+pixel.E {
 				distTo[visitkey] = distTo[k] + pixel.E
@@ -154,6 +153,21 @@ func (sc *SeamCarver) findShortestPath() []int {
 	}
 
 	return path
+}
+
+func transpose(pixels [][]*Pixel) [][]*Pixel {
+	rows, cols := len(pixels), len(pixels[0])
+	newpixels := make([][]*Pixel, cols)
+	for i := range newpixels {
+		newpixels[i] = make([]*Pixel, rows)
+	}
+	for i := 0; i < rows; i++ {
+		for j := 0; j < cols; j++ {
+			newpixels[j][i] = pixels[i][j]
+		}
+	}
+
+	return newpixels
 }
 
 func encode(y, x int) string {
