@@ -40,18 +40,19 @@ func main() {
 
 	for i := 0; i < *row; i++ {
 		seam := carver.FindHorizontalSeam()
-		carver.RemoveVerticalSeam(seam)
+		carver.RemoveHorizontalSeam(seam)
 		fmt.Printf("Removed %d rows \n", i+1)
 	}
 
-	output := "out.png"
+	output := "out.jpg"
 	file, err := os.Create(output)
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
 
-	err = png.Encode(file, carver.Picture())
+	options := jpeg.Options{Quality: 80}
+	err = jpeg.Encode(file, carver.Picture(), &options)
 	if err != nil {
 		panic(err)
 	}

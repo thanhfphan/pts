@@ -1,12 +1,9 @@
 package seamcarver
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"math"
-	"strconv"
-	"strings"
 )
 
 type SeamCarver struct {
@@ -78,13 +75,16 @@ func (sc *SeamCarver) RemoveVerticalSeam(seam []int) {
 }
 
 func (sc *SeamCarver) recalculateEnergy() {
-	h := len(sc.pixels)
-	w := len(sc.pixels[0])
+	height := len(sc.pixels)
+	if height == 0 {
+		return
+	}
+	width := len(sc.pixels[0])
 
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
 			// border
-			if y == 0 || y == h-1 || x == 0 || x == w-1 {
+			if y == 0 || y == height-1 || x == 0 || x == width-1 {
 				sc.pixels[y][x].E = 1000
 				continue
 			}
@@ -111,7 +111,7 @@ func removeVerticalSeam(input [][]*Pixel, seam []int) [][]*Pixel {
 	for i := 0; i < h; i++ {
 		var c int
 		for j := 0; j < w; j++ {
-			if seam[i] != j {
+			if i < len(seam) && seam[i] != j {
 				newpixels[i][c] = input[i][j]
 				c++
 			}
@@ -124,61 +124,49 @@ func removeVerticalSeam(input [][]*Pixel, seam []int) [][]*Pixel {
 // findShortestPath travel from top to bottom
 func findShortestPath(pixels [][]*Pixel) []int {
 	height, width := len(pixels), len(pixels[0])
-	// adj return the neighbors of the pixel at(x, y) to pixels (x − 1, y + 1), (x, y + 1), and (x + 1, y + 1),
-	adj := func(y, x int) [][]int {
-		r := [][]int{}
-		if y+1 < height && x-1 >= 0 {
-			r = append(r, []int{y + 1, x - 1})
-		}
-		if y+1 < height {
-			r = append(r, []int{y + 1, x})
-		}
-		if y+1 < height && x+1 < width {
-			r = append(r, []int{y + 1, x + 1})
-		}
-
-		return r
+	cost := make([][]float64, height)
+	for i := range cost {
+		cost[i] = make([]float64, width)
 	}
-	// travel graph
-	distTo := map[string]float64{}
-	pathTo := map[string]string{}
-	var dfs func(int, int)
-	dfs = func(y, x int) {
-		k := encode(y, x)
-		for _, arr := range adj(y, x) {
-			visitkey := encode(arr[0], arr[1])
-			pixel := pixels[arr[0]][arr[1]]
-			val, has := distTo[visitkey]
-			if !has || val > distTo[k]+pixel.E {
-				distTo[visitkey] = distTo[k] + pixel.E
-				pathTo[visitkey] = k
+
+	for i := 0; i < width; i++ {
+		cost[0][i] = pixels[0][i].E
+	}
+
+	for row := 1; row < height; row++ {
+		for col := 0; col < width; col++ {
+			cost[row][col] = cost[row-1][col]
+			if col-1 > 0 {
+				cost[row][col] = math.Min(cost[row][col], cost[row-1][col-1])
 			}
-			dfs(arr[0], arr[1])
+			if col+1 < width {
+				cost[row][col] = math.Min(cost[row][col], cost[row-1][col+1])
+			}
+
+			cost[row][col] = cost[row][col] + pixels[row][col].E
 		}
-	}
-	for x := 0; x < width; x++ {
-		distTo[encode(0, x)] = 0.0
-		dfs(0, x)
 	}
 
-	// get shortest path
-	var smallest string
-	for x := 0; x < width; x++ {
-		k := encode(height-1, x)
-		if smallest == "" || distTo[k] < distTo[smallest] {
-			smallest = k
+	path := make([]int, height)
+	mincost := math.MaxFloat64
+	for col := 0; col < width; col++ {
+		if cost[height-1][col] < mincost {
+			mincost = cost[height-1][col]
+			path[height-1] = col
 		}
 	}
-	path := []int{}
-	current := smallest
-	for current != "" {
-		_, tmpx := decode(current)
-		path = append(path, tmpx)
-		current = pathTo[current]
-	}
-	// reverse
-	for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
-		path[i], path[j] = path[j], path[i]
+
+	for row := height - 2; row >= 0; row-- {
+		lc := path[row+1] // last column
+		minCol := lc
+		if lc-1 > 0 && cost[row][lc-1] < cost[row][minCol] {
+			minCol = lc - 1
+		}
+		if lc+1 < width && cost[row][lc+1] < cost[row][minCol] {
+			minCol = lc + 1
+		}
+
+		path[row] = minCol
 	}
 
 	return path
@@ -198,17 +186,6 @@ func transpose(pixels [][]*Pixel) [][]*Pixel {
 	}
 
 	return newpixels
-}
-
-func encode(y, x int) string {
-	return fmt.Sprintf("%d-%d", y, x)
-}
-
-func decode(key string) (int, int) {
-	items := strings.Split(key, "-")
-	y, _ := strconv.Atoi(items[0])
-	x, _ := strconv.Atoi(items[1])
-	return y, x
 }
 
 func imageToArrayPixel(img image.Image) [][]*Pixel {
