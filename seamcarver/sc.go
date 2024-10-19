@@ -7,15 +7,14 @@ import (
 )
 
 type SeamCarver struct {
-	original image.Image
+	picture image.Image
 
-	pixels [][]*Pixel
+	energy [][]float64
 }
 
 func New(img image.Image) *SeamCarver {
 	sc := &SeamCarver{
-		original: img,
-		pixels:   imageToArrayPixel(img),
+		picture: img,
 	}
 
 	sc.recalculateEnergy()
@@ -25,112 +24,107 @@ func New(img image.Image) *SeamCarver {
 
 // Picture represent the picture(current)
 func (sc *SeamCarver) Picture() image.Image {
-	return arrayPixelToImage(sc.pixels)
+	return sc.picture
 }
 
 // Width of current picture
 func (sc *SeamCarver) Width() int {
-	return len(sc.pixels[0])
+	w, _ := sc.picture.Bounds().Dx(), sc.picture.Bounds().Dy()
+	return w
 }
 
 // Height of current picture
 func (sc *SeamCarver) Height() int {
-	return len(sc.pixels)
+	_, h := sc.picture.Bounds().Dx(), sc.picture.Bounds().Dy()
+	return h
 }
 
 // Energy of pixel at column x and row y
 func (sc *SeamCarver) Energy(x, y int) float64 {
-	return sc.pixels[y][x].E
+	return sc.energy[y][x]
 }
 
 func (sc *SeamCarver) Color(x, y int) color.Color {
-	return sc.pixels[y][x].C
+	return sc.picture.At(x, y)
 }
 
 // FindHorizontalSeam return sequence of indices for horizontal seam
 func (sc *SeamCarver) FindHorizontalSeam() []int {
 	// - transpose
-	tp := transpose(sc.pixels)
+	tp := transpose(sc.energy)
 	// - find vertical seam
-	return findShortestPath(tp)
+	return retrieveSeamPath(tp)
 }
 
 // FindVerticalSeam return sequence of indices for vertical seam
 func (sc *SeamCarver) FindVerticalSeam() []int {
-	return findShortestPath(sc.pixels)
+	return retrieveSeamPath(sc.energy)
 }
 
 // RemoveHorizontalSeam from current picture
 func (sc *SeamCarver) RemoveHorizontalSeam(seam []int) {
-	newpixels := transpose(sc.pixels)
-	newpixels = removeVerticalSeam(newpixels, seam)
-	sc.pixels = transpose(newpixels)
+	newImg := transposeImage(sc.picture)
+	removeVerticalSeam(newImg, seam)
+	sc.picture = transposeImage(newImg) // transpose back
 	sc.recalculateEnergy()
 }
 
 // RemoveVerticalSeam from current picture
 func (sc *SeamCarver) RemoveVerticalSeam(seam []int) {
-	sc.pixels = removeVerticalSeam(sc.pixels, seam)
+	sc.picture = removeVerticalSeam(sc.picture, seam)
 	sc.recalculateEnergy()
 }
 
 func (sc *SeamCarver) recalculateEnergy() {
-	height := len(sc.pixels)
-	if height == 0 {
-		return
+	width, height := sc.picture.Bounds().Dx(), sc.picture.Bounds().Dy()
+	sc.energy = make([][]float64, height)
+	for i, _ := range sc.energy {
+		sc.energy[i] = make([]float64, width)
 	}
-	width := len(sc.pixels[0])
 
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			// border
 			if y == 0 || y == height-1 || x == 0 || x == width-1 {
-				sc.pixels[y][x].E = 1000
+				sc.energy[y][x] = 1000
 				continue
 			}
 
-			deltaX := calcDeltaSquare(sc.pixels[y][x+1].C, sc.pixels[y][x-1].C)
-			deltaY := calcDeltaSquare(sc.pixels[y+1][x].C, sc.pixels[y-1][x].C)
+			deltaX := delta(sc.picture.At(x+1, y), sc.picture.At(x-1, y))
+			deltaY := delta(sc.picture.At(x, y+1), sc.picture.At(x, y-1))
 
-			sc.pixels[y][x].E = math.Sqrt(float64(deltaX) + float64(deltaY))
+			sc.energy[y][x] = math.Sqrt(float64(deltaX) + float64(deltaY))
 		}
 	}
 }
 
-func removeVerticalSeam(input [][]*Pixel, seam []int) [][]*Pixel {
-	h := len(input)
-	if h == 0 {
-		return nil
-	}
-	w := len(input[0])
-	newpixels := make([][]*Pixel, h)
-	for i := range newpixels {
-		newpixels[i] = make([]*Pixel, w-1) // minus 1
-	}
+func removeVerticalSeam(img image.Image, seam []int) image.Image {
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	newImg := image.NewRGBA(image.Rect(0, 0, w-1, h))
 
 	for i := 0; i < h; i++ {
 		var c int
 		for j := 0; j < w; j++ {
 			if i < len(seam) && seam[i] != j {
-				newpixels[i][c] = input[i][j]
+				newImg.Set(c, i, img.At(j, i))
 				c++
 			}
 		}
 	}
 
-	return newpixels
+	return newImg
 }
 
-// findShortestPath travel from top to bottom
-func findShortestPath(pixels [][]*Pixel) []int {
-	height, width := len(pixels), len(pixels[0])
+// retrieveSeamPath travel from top to bottom
+func retrieveSeamPath(energy [][]float64) []int {
+	height, width := len(energy), len(energy[0])
 	cost := make([][]float64, height)
 	for i := range cost {
 		cost[i] = make([]float64, width)
 	}
 
 	for i := 0; i < width; i++ {
-		cost[0][i] = pixels[0][i].E
+		cost[0][i] = energy[0][i]
 	}
 
 	for row := 1; row < height; row++ {
@@ -143,7 +137,7 @@ func findShortestPath(pixels [][]*Pixel) []int {
 				cost[row][col] = math.Min(cost[row][col], cost[row-1][col+1])
 			}
 
-			cost[row][col] = cost[row][col] + pixels[row][col].E
+			cost[row][col] = cost[row][col] + energy[row][col]
 		}
 	}
 
@@ -173,51 +167,34 @@ func findShortestPath(pixels [][]*Pixel) []int {
 }
 
 // transpose return new matrix after transpose
-func transpose(pixels [][]*Pixel) [][]*Pixel {
-	rows, cols := len(pixels), len(pixels[0])
-	newpixels := make([][]*Pixel, cols)
+func transpose(energy [][]float64) [][]float64 {
+	rows, cols := len(energy), len(energy[0])
+	newpixels := make([][]float64, cols)
 	for i := range newpixels {
-		newpixels[i] = make([]*Pixel, rows)
+		newpixels[i] = make([]float64, rows)
 	}
 	for i := 0; i < rows; i++ {
 		for j := 0; j < cols; j++ {
-			newpixels[j][i] = pixels[i][j]
+			newpixels[j][i] = energy[i][j]
 		}
 	}
 
 	return newpixels
 }
 
-func imageToArrayPixel(img image.Image) [][]*Pixel {
+func transposeImage(img image.Image) image.Image {
 	w, h := img.Bounds().Dx(), img.Bounds().Dy()
-	arr := make([][]*Pixel, h)
-	for y := 0; y < h; y++ {
-		arr[y] = make([]*Pixel, w)
-		for x := 0; x < w; x++ {
-			arr[y][x] = &Pixel{
-				C: img.At(x, y),
-			}
-		}
-	}
-	return arr
-}
-
-func arrayPixelToImage(arr [][]*Pixel) image.Image {
-	h := len(arr)
-	w := len(arr[0])
-
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
-
+	newimg := image.NewRGBA(image.Rect(0, 0, h, w))
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			img.Set(x, y, arr[y][x].C)
+			newimg.Set(y, x, img.At(x, y))
 		}
 	}
 
-	return img
+	return newimg
 }
 
-func calcDeltaSquare(c1, c2 color.Color) uint32 {
+func delta(c1, c2 color.Color) uint32 {
 	r, g, b, _ := c1.RGBA()
 	r, g, b = r/257, g/257, b/257
 
