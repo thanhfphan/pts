@@ -9,4 +9,4 @@ A simple image editor (or game) that demonstrates the technique called [Seam Car
 ![Input](./tools/resize/mountain.jpg)
 
 ### Output
-![Output](./tools/resize/out.jpg?ver=2)
+![Output](./tools/resize/out.jpg?ver=3)
