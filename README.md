@@ -6,7 +6,7 @@ A simple image editor (or game) that demonstrates the technique called [Seam Car
 [Go to docs](./tools/resize/README.md)
 
 ### Input
-![Input](./tools/resize/cachep.jpg)
+![Input](./tools/resize/mountain.jpg)
 
 ### Output
-![Output](./tools/resize/out.jpg?ver=1)
+![Output](./tools/resize/out.jpg?ver=2)

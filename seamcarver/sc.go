@@ -64,7 +64,7 @@ func (sc *SeamCarver) FindVerticalSeam() []int {
 // RemoveHorizontalSeam from current picture
 func (sc *SeamCarver) RemoveHorizontalSeam(seam []int) {
 	newImg := transposeImage(sc.picture)
-	removeVerticalSeam(newImg, seam)
+	newImg = removeVerticalSeam(newImg, seam)
 	sc.picture = transposeImage(newImg) // transpose back
 	sc.recalculateEnergy()
 }
@@ -78,7 +78,7 @@ func (sc *SeamCarver) RemoveVerticalSeam(seam []int) {
 func (sc *SeamCarver) recalculateEnergy() {
 	width, height := sc.picture.Bounds().Dx(), sc.picture.Bounds().Dy()
 	sc.energy = make([][]float64, height)
-	for i, _ := range sc.energy {
+	for i := range sc.energy {
 		sc.energy[i] = make([]float64, width)
 	}
 
@@ -164,17 +164,15 @@ func retrieveSeamPath(energy [][]float64) []int {
 // transpose return new matrix after transpose
 func transpose(energy [][]float64) [][]float64 {
 	rows, cols := len(energy), len(energy[0])
-	newpixels := make([][]float64, cols)
-	for i := range newpixels {
-		newpixels[i] = make([]float64, rows)
-	}
-	for i := 0; i < rows; i++ {
-		for j := 0; j < cols; j++ {
-			newpixels[j][i] = energy[i][j]
+	transposed := make([][]float64, cols)
+	for col := range transposed {
+		transposed[col] = make([]float64, rows)
+		for row := range energy {
+			transposed[col][row] = energy[row][col]
 		}
 	}
 
-	return newpixels
+	return transposed
 }
 
 func transposeImage(img image.Image) image.Image {
@@ -190,13 +188,13 @@ func transposeImage(img image.Image) image.Image {
 }
 
 func delta(c1, c2 color.Color) uint32 {
-	r, g, b, _ := c1.RGBA()
-	r, g, b = r/257, g/257, b/257
+	r1, g1, b1, _ := c1.RGBA()
+	r1, g1, b1 = r1/257, g1/257, b1/257
 
 	r2, g2, b2, _ := c2.RGBA()
 	r2, g2, b2 = r2/257, g2/257, b2/257
 
-	d := (r-r2)*(r-r2) + (g-g2)*(g-g2) + (b-b2)*(b-b2)
+	delta := (r1-r2)*(r1-r2) + (g1-g2)*(g1-g2) + (b1-b2)*(b1-b2)
 
-	return d
+	return delta
 }

@@ -1,11 +1,11 @@
 # Resize
 
 ```bash
- go run main.go --row=200 --col=100 
+ go run main.go --col=200
 ```
 
 ## Input
-![Input](cachep.jpg)
+![Input](mountain.jpg)
 
 ## Output
-![Output](out.jpg?ver=1)
+![Output](out.jpg?ver=2)

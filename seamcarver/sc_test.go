@@ -1,6 +1,8 @@
 package seamcarver
 
 import (
+	"image"
+	"image/color"
 	"testing"
 )
 
@@ -64,6 +66,101 @@ func TestRetrieveSeamPath(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTransposeImage(t *testing.T) {
+	tests := []struct {
+		name string
+		img  image.Image
+		want image.Image
+	}{
+		{
+			name: "3x2 image",
+			img: func() image.Image {
+				img := image.NewRGBA(image.Rect(0, 0, 3, 2))
+				img.Set(0, 0, color.RGBA{255, 0, 0, 255})
+				img.Set(1, 0, color.RGBA{0, 255, 0, 255})
+				img.Set(2, 0, color.RGBA{0, 0, 255, 255})
+				img.Set(0, 1, color.RGBA{255, 255, 0, 255})
+				img.Set(1, 1, color.RGBA{0, 255, 255, 255})
+				img.Set(2, 1, color.RGBA{255, 0, 255, 255})
+				return img
+			}(),
+			want: func() image.Image {
+				img := image.NewRGBA(image.Rect(0, 0, 2, 3))
+				img.Set(0, 0, color.RGBA{255, 0, 0, 255})
+				img.Set(0, 1, color.RGBA{0, 255, 0, 255})
+				img.Set(0, 2, color.RGBA{0, 0, 255, 255})
+				img.Set(1, 0, color.RGBA{255, 255, 0, 255})
+				img.Set(1, 1, color.RGBA{0, 255, 255, 255})
+				img.Set(1, 2, color.RGBA{255, 0, 255, 255})
+				return img
+			}(),
+		},
+		{
+			name: "1x1 image",
+			img: func() image.Image {
+				img := image.NewRGBA(image.Rect(0, 0, 1, 1))
+				img.Set(0, 0, color.RGBA{123, 123, 123, 255})
+				return img
+			}(),
+			want: func() image.Image {
+				img := image.NewRGBA(image.Rect(0, 0, 1, 1))
+				img.Set(0, 0, color.RGBA{123, 123, 123, 255})
+				return img
+			}(),
+		},
+		{
+			name: "2x3 image",
+			img: func() image.Image {
+				img := image.NewRGBA(image.Rect(0, 0, 2, 3))
+				img.Set(0, 0, color.RGBA{255, 0, 0, 255})
+				img.Set(1, 0, color.RGBA{0, 255, 0, 255})
+				img.Set(0, 1, color.RGBA{0, 0, 255, 255})
+				img.Set(1, 1, color.RGBA{255, 255, 0, 255})
+				img.Set(0, 2, color.RGBA{0, 255, 255, 255})
+				img.Set(1, 2, color.RGBA{255, 0, 255, 255})
+				return img
+			}(),
+			want: func() image.Image {
+				img := image.NewRGBA(image.Rect(0, 0, 3, 2))
+				img.Set(0, 0, color.RGBA{255, 0, 0, 255})
+				img.Set(1, 0, color.RGBA{0, 0, 255, 255})
+				img.Set(2, 0, color.RGBA{0, 255, 255, 255})
+				img.Set(0, 1, color.RGBA{0, 255, 0, 255})
+				img.Set(1, 1, color.RGBA{255, 255, 0, 255})
+				img.Set(2, 1, color.RGBA{255, 0, 255, 255})
+				return img
+			}(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := transposeImage(tt.img)
+			if !imagesEqual(got, tt.want) {
+				t.Errorf("transposeImage() = %v, want %v", got, tt.want)
+			}
+			back := transposeImage(got)
+			if !imagesEqual(back, tt.img) {
+				t.Errorf("transpose back should equal the original image back = %v, want %v", back, tt.img)
+			}
+		})
+	}
+}
+
+func imagesEqual(a, b image.Image) bool {
+	if !a.Bounds().Eq(b.Bounds()) {
+		return false
+	}
+	for y := 0; y < a.Bounds().Dy(); y++ {
+		for x := 0; x < a.Bounds().Dx(); x++ {
+			if a.At(x, y) != b.At(x, y) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func equal(a, b []int) bool {

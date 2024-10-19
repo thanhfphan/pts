@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	path = flag.String("input", "cachep.jpg", "the path to the image")
-	row  = flag.Int("row", 10, "the number row to remove")
+	path = flag.String("input", "mountain.jpg", "the path to the image")
+	row  = flag.Int("row", 0, "the number row to remove")
 	col  = flag.Int("col", 10, "the number column to remove")
 )
 
@@ -29,7 +29,7 @@ func main() {
 	}
 
 	carver := seamcarver.New(picture)
-	fmt.Printf("The image '%s' has %d rows and %d columns\n", *path, carver.Height(), carver.Height())
+	fmt.Printf("The image '%s' has %d rows and %d columns\n", *path, carver.Height(), carver.Width())
 
 	start := time.Now()
 	for i := 0; i < *col; i++ {
@@ -57,7 +57,7 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Printf("Output image '%s' has %d rows and %d columns\n", output, carver.Height(), carver.Height())
+	fmt.Printf("Output image '%s' has %d rows and %d columns\n", output, carver.Height(), carver.Width())
 	duration := time.Since(start)
 	fmt.Printf("Resize took %v seconds\n", duration.Seconds())
 }
