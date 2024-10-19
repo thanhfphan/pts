@@ -9,4 +9,4 @@ A simple image editor (or game) that demonstrates the technique called [Seam Car
 ![Input](./tools/resize/cachep.jpg)
 
 ### Output
-![Output](./tools/resize/out.jpg)
+![Output](./tools/resize/out.jpg?ver=1)
