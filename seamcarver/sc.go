@@ -121,45 +121,40 @@ func retrieveSeamPath(energy [][]float64) []int {
 	cost := make([][]float64, height)
 	for i := range cost {
 		cost[i] = make([]float64, width)
-	}
-
-	for i := 0; i < width; i++ {
-		cost[0][i] = energy[0][i]
+		copy(cost[i], energy[i])
 	}
 
 	for row := 1; row < height; row++ {
 		for col := 0; col < width; col++ {
-			cost[row][col] = cost[row-1][col]
-			if col-1 > 0 {
-				cost[row][col] = math.Min(cost[row][col], cost[row-1][col-1])
+			minCost := cost[row-1][col]
+			if col > 0 {
+				minCost = math.Min(minCost, cost[row-1][col-1])
 			}
-			if col+1 < width {
-				cost[row][col] = math.Min(cost[row][col], cost[row-1][col+1])
+			if col < width-1 {
+				minCost = math.Min(minCost, cost[row-1][col+1])
 			}
-
-			cost[row][col] = cost[row][col] + energy[row][col]
+			cost[row][col] = minCost + energy[row][col]
 		}
 	}
 
 	path := make([]int, height)
-	mincost := math.MaxFloat64
+	minCost := math.MaxFloat64
 	for col := 0; col < width; col++ {
-		if cost[height-1][col] < mincost {
-			mincost = cost[height-1][col]
+		if cost[height-1][col] < minCost {
+			minCost = cost[height-1][col]
 			path[height-1] = col
 		}
 	}
 
 	for row := height - 2; row >= 0; row-- {
-		lc := path[row+1] // last column
-		minCol := lc
-		if lc-1 > 0 && cost[row][lc-1] < cost[row][minCol] {
-			minCol = lc - 1
+		lastCol := path[row+1]
+		minCol := lastCol
+		if lastCol > 0 && cost[row][lastCol-1] < cost[row][minCol] {
+			minCol = lastCol - 1
 		}
-		if lc+1 < width && cost[row][lc+1] < cost[row][minCol] {
-			minCol = lc + 1
+		if lastCol < width-1 && cost[row][lastCol+1] < cost[row][minCol] {
+			minCol = lastCol + 1
 		}
-
 		path[row] = minCol
 	}
 
