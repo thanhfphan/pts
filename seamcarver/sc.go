@@ -29,14 +29,12 @@ func (sc *SeamCarver) Picture() image.Image {
 
 // Width of current picture
 func (sc *SeamCarver) Width() int {
-	w, _ := sc.picture.Bounds().Dx(), sc.picture.Bounds().Dy()
-	return w
+	return sc.picture.Bounds().Dx()
 }
 
 // Height of current picture
 func (sc *SeamCarver) Height() int {
-	_, h := sc.picture.Bounds().Dx(), sc.picture.Bounds().Dy()
-	return h
+	return sc.picture.Bounds().Dy()
 }
 
 // Energy of pixel at column x and row y
@@ -73,6 +71,52 @@ func (sc *SeamCarver) RemoveHorizontalSeam(seam []int) {
 func (sc *SeamCarver) RemoveVerticalSeam(seam []int) {
 	sc.picture = removeVerticalSeam(sc.picture, seam)
 	sc.recalculateEnergy()
+}
+
+func (sc *SeamCarver) InsertVerticalSearm(n int) {
+	copyimg := copyImage(sc.picture)
+	deleteSeam := [][]int{}
+	for i := 0; i < n; i++ {
+		seam := sc.FindVerticalSeam()
+		deleteSeam = append(deleteSeam, seam)
+		sc.picture = removeVerticalSeam(sc.picture, seam)
+		sc.recalculateEnergy()
+	}
+
+	sc.picture = copyimg
+	sc.recalculateEnergy()
+	for _, seam := range deleteSeam {
+		sc.picture = insertVerticalSeam(sc.picture, seam)
+		sc.recalculateEnergy()
+	}
+}
+
+func (sc *SeamCarver) InsertHorizontalSeam(n int) {
+	sc.picture = transposeImage(sc.picture)
+	sc.InsertVerticalSearm(n)
+	sc.picture = transposeImage(sc.picture)
+}
+
+func insertVerticalSeam(img image.Image, seam []int) image.Image {
+	width, height := img.Bounds().Dx(), img.Bounds().Dy()
+	newImg := image.NewRGBA(image.Rect(0, 0, width+1, height))
+
+	for y := 0; y < height; y++ {
+		var c int
+		for x := 0; x < width; x++ {
+			newImg.Set(c, y, img.At(x, y))
+			c++
+			if seam[y] == x {
+				// Duplicate the pixel at the seam
+				left := img.At(max(x-1, 0), y)
+				right := img.At(min(x+1, width-1), y)
+				newImg.Set(c, y, averageColor(left, right))
+				c++
+			}
+		}
+	}
+
+	return newImg
 }
 
 func (sc *SeamCarver) recalculateEnergy() {
@@ -168,7 +212,7 @@ func transpose(energy [][]float64) [][]float64 {
 	for col := range transposed {
 		transposed[col] = make([]float64, rows)
 		for row := range energy {
-			transposed[col][row] = energy[row][col]
+			copy(transposed[col], energy[row])
 		}
 	}
 
@@ -187,6 +231,18 @@ func transposeImage(img image.Image) image.Image {
 	return newimg
 }
 
+func copyImage(img image.Image) image.Image {
+	bounds := img.Bounds()
+	newImg := image.NewRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
+	for y := 0; y < bounds.Dy(); y++ {
+		for x := 0; x < bounds.Dx(); x++ {
+			newImg.Set(x, y, img.At(x, y))
+		}
+	}
+
+	return newImg
+}
+
 func delta(c1, c2 color.Color) uint32 {
 	r1, g1, b1, _ := c1.RGBA()
 	r1, g1, b1 = r1/257, g1/257, b1/257
@@ -197,4 +253,16 @@ func delta(c1, c2 color.Color) uint32 {
 	delta := (r1-r2)*(r1-r2) + (g1-g2)*(g1-g2) + (b1-b2)*(b1-b2)
 
 	return delta
+}
+
+func averageColor(left, right color.Color) color.Color {
+	leftR, leftG, leftB, leftA := left.RGBA()
+	rightR, rightG, rightB, rightA := right.RGBA()
+
+	avgR := uint8((leftR + rightR) / 257 / 2)
+	avgG := uint8((leftG + rightG) / 257 / 2)
+	avgB := uint8((leftB + rightB) / 257 / 2)
+	avgA := uint8((leftA + rightA) / 257 / 2)
+
+	return color.RGBA{R: avgR, G: avgG, B: avgB, A: avgA}
 }
